@@ -14,6 +14,8 @@ export default function App() {
       const parsed = await parseEpub(file)
       setBook(parsed)
       setScreen('reader')
+      console.log(parsed);
+
     } catch (e) {
       console.error(e)
       setLoadError('No se pudo leer el archivo. ¿Es un epub válido?')

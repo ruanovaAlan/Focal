@@ -20,13 +20,11 @@ export async function parseEpub(file) {
 
     try {
       const doc = await book.load(item.href)
-      const text = extractText(doc)
+      const text = extractText(doc.body || doc.documentElement)
       const chunkWords = tokenize(text)
       words.push(...chunkWords)
     } catch (e) {
-      // skip sections that fail to load
-      console.log('Error extracting text: ', e);
-
+      console.log('Error extracting text: ', e)
     }
   }
 
@@ -37,13 +35,9 @@ export async function parseEpub(file) {
   }
 }
 
-function extractText(doc) {
-  // Remove script/style nodes
-  const clone = doc.cloneNode ? doc : doc.documentElement
-  const scripts = clone.querySelectorAll?.('script, style') || []
-  scripts.forEach(el => el.remove())
-
-  return clone.textContent || clone.innerText || ''
+function extractText(node) {
+  node.querySelectorAll('script, style').forEach(el => el.remove())
+  return node.textContent || ''
 }
 
 function tokenize(text) {
