@@ -1,5 +1,5 @@
 {
-  "name": "focal-rsvp-reader",
+  "name": "fluum-rsvp-reader",
   "private": true,
   "version": "0.0.0",
   "type": "module",

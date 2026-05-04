@@ -44,7 +44,7 @@ function HomeScreen({ onFileSelected, error }) {
   return (
     <div className="home">
       <header className="home__header">
-        <span className="home__logo">focal</span>
+        <span className="home__logo">fluum</span>
         <span className="home__tagline">una palabra a la vez</span>
       </header>
 
