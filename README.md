@@ -1,22 +1,22 @@
 ```
-███████╗ ██████╗  ██████╗ █████╗ ██╗
-██╔════╝██╔═══██╗██╔════╝██╔══██╗██║
-█████╗  ██║   ██║██║     ███████║██║
-██╔══╝  ██║   ██║██║     ██╔══██║██║
-██║     ╚██████╔╝╚██████╗██║  ██║███████╗
-╚═╝      ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝
+███████╗██╗     ██╗   ██╗██╗   ██╗███╗   ███╗
+██╔════╝██║     ██║   ██║██║   ██║████╗ ████║
+█████╗  ██║     ██║   ██║██║   ██║██╔████╔██║
+██╔══╝  ██║     ██║   ██║██║   ██║██║╚██╔╝██║
+██║     ███████╗╚██████╔╝╚██████╔╝██║ ╚═╝ ██║
+╚═╝     ╚══════╝ ╚═════╝  ╚═════╝ ╚═╝     ╚═╝
 
 una palabra a la vez.
 ```
 
 ---
 
-**Focal** es un lector RSVP (*Rapid Serial Visual Presentation*) para archivos `.epub`. En lugar de desplazarte por páginas, cada palabra aparece una a la vez en el centro de la pantalla — eliminando el movimiento ocular y permitiéndote leer hasta 3× más rápido.
+**Fluum** es un lector RSVP (*Rapid Serial Visual Presentation*) para archivos `.epub`. En lugar de desplazarte por páginas, cada palabra aparece una a la vez en el centro de la pantalla — eliminando el movimiento ocular y permitiéndote leer hasta 3× más rápido.
 
 ## Cómo funciona
 
 1. Sube un archivo `.epub` — arrastrándolo o seleccionándolo
-2. Focal extrae el texto completo del libro
+2. Fluum extrae el texto completo del libro
 3. Las palabras aparecen una a la vez en pantalla a la velocidad que elijas
 4. Pausa, retrocede, ajusta los WPM en cualquier momento
 
