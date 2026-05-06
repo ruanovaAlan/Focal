@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import FileDropzone from './components/FileDropzone'
+import ReaderScreen from './components/ReaderScreen'
 import { parseEpub } from './utils/epubParser'
 
 export default function App() {
@@ -32,11 +33,7 @@ export default function App() {
         <LoadingScreen />
       )}
       {screen === 'reader' && book && (
-        <div style={{ color: 'var(--text)', padding: '2rem', textAlign: 'center' }}>
-          <p style={{ color: 'var(--muted)', fontSize: '0.75rem', marginBottom: '0.5rem' }}>{book.author}</p>
-          <p style={{ color: 'var(--accent)' }}>{book.title}</p>
-          <p style={{ color: 'var(--muted)', marginTop: '1rem', fontSize: '0.75rem' }}>{book.words.length.toLocaleString()} palabras — lector próximamente</p>
-        </div>
+        <ReaderScreen book={book} onBack={() => { setBook(null); setScreen('home') }} />
       )}
     </div>
   )
