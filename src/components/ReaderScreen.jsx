@@ -1,18 +1,39 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { ArrowLeft, Play, Pause, RotateCcw } from 'lucide-react'
+import ePub from 'epubjs'
+import { getWPM, setWPM } from '../lib/storage'
+
+async function parseWords(file) {
+  const book = ePub(file)
+  await book.ready
+  await book.spine.ready
+
+  const words = []
+  for (const item of book.spine.spineItems) {
+    try {
+      await item.load(book.load.bind(book))
+      const text = item.document?.body?.textContent ?? ''
+      text.split(/\s+/).forEach(w => { if (w.trim()) words.push(w) })
+      item.unload()
+    } catch {
+      // skip corrupt spine section
+    }
+  }
+  return words
+}
 
 function renderWord(word) {
   if (!word) return null
-  const orpIndex = word.length - 1
+  const orpIndex = Math.floor(word.length / 2)
   const before = word.slice(0, orpIndex)
   const orp = word[orpIndex]
   const after = word.slice(orpIndex + 1)
   return (
-    <span className="reader-word select-none">
-      <span>{before}</span>
-      <span className="text-[var(--accent)]">{orp}</span>
-      <span>{after}</span>
-    </span>
+    <div className="reader-word select-none" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+      <span style={{ textAlign: 'right', flex: 1 }}>{before}</span>
+      <span style={{ color: 'var(--accent)', flexShrink: 0 }}>{orp}</span>
+      <span style={{ textAlign: 'left', flex: 1 }}>{after}</span>
+    </div>
   )
 }
 
@@ -22,24 +43,51 @@ const wpmBtnClass =
 const iconBtnClass =
   'bg-transparent border border-[var(--border)] rounded-full text-[var(--muted)] w-11 h-11 cursor-pointer flex items-center justify-center transition-colors hover:text-[var(--text)] hover:border-[var(--accent)]'
 
-export default function ReaderScreen({ book, onBack }) {
+export default function ReaderScreen({ bookFile, bookMeta, onBack, bookId, updateProgress, getBookProgress }) {
+  const [words, setWords] = useState(null)
+  const [parseError, setParseError] = useState(null)
   const [wordIndex, setWordIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [wpm, setWpm] = useState(300)
+  const [wpm, setWpm] = useState(getWPM)
 
   const wordIndexRef = useRef(0)
   const intervalRef = useRef(null)
-  wordIndexRef.current = wordIndex
 
   useEffect(() => {
-    if (!isPlaying) {
+    wordIndexRef.current = wordIndex
+  }, [wordIndex])
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const extracted = await parseWords(bookFile)
+        if (cancelled) return
+        setWords(extracted)
+
+        const saved = await getBookProgress(bookId)
+        if (!cancelled && saved !== null && typeof saved.percent === 'number' && extracted.length > 0) {
+          const idx = Math.floor((saved.percent / 100) * extracted.length)
+          setWordIndex(Math.max(0, Math.min(idx, extracted.length - 1)))
+        }
+      } catch {
+        if (!cancelled) setParseError('No se pudo leer el libro')
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [bookFile, bookId, getBookProgress])
+
+  useEffect(() => {
+    if (!isPlaying || !words) {
       clearInterval(intervalRef.current)
       return
     }
 
+    const len = words.length
     intervalRef.current = setInterval(() => {
       const next = wordIndexRef.current + 1
-      if (next >= book.words.length) {
+      if (next >= len) {
         setIsPlaying(false)
         return
       }
@@ -47,16 +95,16 @@ export default function ReaderScreen({ book, onBack }) {
     }, 60000 / wpm)
 
     return () => clearInterval(intervalRef.current)
-  }, [isPlaying, wpm, book.words.length])
+  }, [isPlaying, wpm, words])
 
   const togglePlay = useCallback(() => {
     setIsPlaying(prev => {
-      if (!prev && wordIndexRef.current >= book.words.length - 1) {
+      if (!prev && wordIndexRef.current >= (words?.length ?? 1) - 1) {
         setWordIndex(0)
       }
       return !prev
     })
-  }, [book.words.length])
+  }, [words])
 
   const restart = useCallback(() => {
     setIsPlaying(false)
@@ -64,7 +112,11 @@ export default function ReaderScreen({ book, onBack }) {
   }, [])
 
   const adjustWpm = useCallback((delta) => {
-    setWpm(prev => Math.min(600, Math.max(200, prev + delta)))
+    setWpm(prev => {
+      const next = Math.min(600, Math.max(200, prev + delta))
+      setWPM(next)
+      return next
+    })
   }, [])
 
   useEffect(() => {
@@ -78,16 +130,49 @@ export default function ReaderScreen({ book, onBack }) {
     return () => window.removeEventListener('keydown', handleKey)
   }, [togglePlay, restart, adjustWpm])
 
+  useEffect(() => {
+    if (!words) return
+    const pct = words.length > 1 ? Math.floor((wordIndex / (words.length - 1)) * 100) : 0
+    const timer = setTimeout(() => {
+      updateProgress(bookId, null, pct)
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [wordIndex, words, bookId, updateProgress])
+
   function handleProgressClick(e) {
+    if (!words) return
     const rect = e.currentTarget.getBoundingClientRect()
     const ratio = (e.clientX - rect.left) / rect.width
-    const newIndex = Math.floor(ratio * book.words.length)
-    setWordIndex(Math.max(0, Math.min(newIndex, book.words.length - 1)))
+    const newIndex = Math.floor(ratio * words.length)
+    setWordIndex(Math.max(0, Math.min(newIndex, words.length - 1)))
   }
 
-  const progress = book.words.length > 1
-    ? (wordIndex / (book.words.length - 1)) * 100
+  const progress = words && words.length > 1
+    ? Math.floor((wordIndex / (words.length - 1)) * 100)
     : 0
+
+  if (parseError) {
+    return (
+      <div className="loading">
+        <p className="loading__text" style={{ color: '#e05c5c' }}>{parseError}</p>
+        <button
+          onClick={onBack}
+          style={{ color: 'var(--muted)', fontSize: '0.75rem', marginTop: '1.5rem' }}
+        >
+          Volver a la biblioteca
+        </button>
+      </div>
+    )
+  }
+
+  if (!words) {
+    return (
+      <div className="loading">
+        <div className="loading__dot" />
+        <p className="loading__text">Cargando libro...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col min-h-dvh p-4">
@@ -106,11 +191,11 @@ export default function ReaderScreen({ book, onBack }) {
             className="text-sm font-light text-[var(--text)] truncate max-w-full"
             style={{ fontFamily: "'Fraunces', serif" }}
           >
-            {book.title}
+            {bookMeta?.title ?? ''}
           </span>
-          {book.author && (
+          {bookMeta?.author && (
             <span className="text-[0.65rem] text-[var(--muted)] truncate max-w-full">
-              {book.author}
+              {bookMeta.author}
             </span>
           )}
         </div>
@@ -124,7 +209,7 @@ export default function ReaderScreen({ book, onBack }) {
 
       {/* Word stage */}
       <main className="flex-1 flex items-center justify-center p-8">
-        {renderWord(book.words[wordIndex])}
+        {renderWord(words[wordIndex])}
       </main>
 
       {/* Controls */}
@@ -147,7 +232,7 @@ export default function ReaderScreen({ book, onBack }) {
         onClick={handleProgressClick}
         role="progressbar"
         aria-valuenow={wordIndex}
-        aria-valuemax={book.words.length - 1}
+        aria-valuemax={words.length - 1}
       >
         <div
           className="h-full bg-[var(--accent)] rounded-sm transition-[width] duration-100 ease-linear"
@@ -157,7 +242,7 @@ export default function ReaderScreen({ book, onBack }) {
 
       {/* Counter */}
       <div className="text-[0.65rem] text-[var(--muted)] text-center pb-2 tracking-[0.06em]">
-        {(wordIndex + 1).toLocaleString()} / {book.words.length.toLocaleString()}
+        {(wordIndex + 1).toLocaleString()} / {words.length.toLocaleString()}
       </div>
     </div>
   )

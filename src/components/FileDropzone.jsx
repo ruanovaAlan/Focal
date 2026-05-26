@@ -82,7 +82,7 @@ function BookIcon({ active }) {
       height="40"
       viewBox="0 0 24 24"
       fill="none"
-      stroke={active ? 'var(--accent)' : 'var(--muted)'}
+      stroke={active ? 'var(--accent)' : 'currentColor'}
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
